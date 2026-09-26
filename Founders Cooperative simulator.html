@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Founders Cooperative simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1EC; --surface:#FFFFFF; --ink:#1B2331; --muted:#586274; --line:#D3D9D0;
+  --accent:#2B5B87; --band:rgba(43,91,135,.16); --wheat:#B98A1E; --wheat-soft:rgba(185,138,30,.12);
+  --good:#2C7A52; --mid:#B98A1E; --bad:#AE4336; --pin:#8A93A3;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11151B; --surface:#19202A; --ink:#E5E9EF; --muted:#9BA4B3; --line:#2B3441;
+    --accent:#7FAAD8; --band:rgba(127,170,216,.18); --wheat:#D8B455; --wheat-soft:rgba(216,180,85,.12);
+    --good:#5CBB88; --mid:#D8B455; --bad:#E27B6D; --pin:#6E7787;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11151B; --surface:#19202A; --ink:#E5E9EF; --muted:#9BA4B3; --line:#2B3441;
+  --accent:#7FAAD8; --band:rgba(127,170,216,.18); --wheat:#D8B455; --wheat-soft:rgba(216,180,85,.12);
+  --good:#5CBB88; --mid:#D8B455; --bad:#E27B6D; --pin:#6E7787;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+header{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+h1{font-size:clamp(26px,4vw,38px);line-height:1.1;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.layout{max-width:1280px;margin:0 auto;padding:16px 20px 40px;display:grid;gap:24px;
+  grid-template-columns:minmax(300px,370px) minmax(0,1fr);align-items:start}
+.controls{order:1}
+.results{order:2;position:sticky;top:env(safe-area-inset-top,0px);max-height:100vh;overflow:auto;padding-bottom:12px}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .results{order:1;position:static;max-height:none;overflow:visible}
+  .controls{order:2}
+}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);padding:7px 14px;font-size:14px;font-weight:500}
+button:hover{border-color:var(--accent)}
+button[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+fieldset{border:0;border-top:1px solid var(--line);margin:0;padding:14px 0 6px}
+legend{font-weight:700;font-size:16px;padding:0 0 4px}
+.group-note{color:var(--muted);font-size:13px;margin:0 0 8px}
+.row{padding:8px 0}
+.row .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.row label{font-weight:500;font-size:14px}
+.row output{font-weight:700;font-size:14px;color:var(--accent);white-space:nowrap}
+.row .hint{color:var(--muted);font-size:12.5px;margin-top:2px}
+input[type=range]{width:100%;margin:6px 0 0;accent-color:var(--accent);height:22px}
+select{width:100%;font:inherit;font-size:14px;padding:7px 8px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);margin-top:6px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:6px 24px;align-items:center}
+.big{font-size:clamp(56px,9vw,88px);font-weight:800;line-height:.9;letter-spacing:-.04em}
+.verdict h2{margin:0;font-size:22px;line-height:1.2}
+.verdict p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:52ch}
+.scale{grid-column:1/-1;margin-top:14px;position:relative;height:10px;border-radius:5px;
+  background:linear-gradient(90deg,var(--bad) 0 30%,var(--mid) 30% 60%,var(--good) 60% 100%);opacity:.9}
+.scale .mark{position:absolute;top:-5px;width:4px;height:20px;border-radius:2px;background:var(--ink);transform:translateX(-2px);transition:left .35s}
+.scale-labels{grid-column:1/-1;display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.criteria{display:grid;gap:10px;margin-top:4px}
+.crit .top{display:flex;justify-content:space-between;font-size:14px}
+.crit .top span:last-child{font-weight:700}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .35s}
+.panel h3{margin:0 0 4px;font-size:16px}
+.panel .sub{margin:0 0 10px;color:var(--muted);font-size:13px}
+.chart-wrap{overflow-x:auto}
+svg.chart{width:100%;min-width:420px;height:auto;display:block}
+svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+.readout{font-size:13px;color:var(--muted);min-height:1.5em;margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat b{display:block;font-size:22px;font-weight:700}
+.stat span{color:var(--muted);font-size:13px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.status{color:var(--muted);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+footer{max-width:1280px;margin:0 auto;padding:0 20px 32px;color:var(--muted);font-size:13px}
+footer p{max-width:80ch}
+.stage-wrap{position:relative}
+canvas#stage{width:100%;display:block;border-radius:10px;background:var(--bg)}
+.viz-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.viz-controls select{width:auto;margin:0}
+.viz-controls input[type=range]{flex:1 1 160px;margin:0}
+.viz-year{font-weight:700;min-width:5.5em}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px 14px;margin-top:12px}
+.chip b{display:block;font-size:17px;font-weight:700}
+.chip span{color:var(--muted);font-size:12.5px}
+.legend i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.legend i.ring{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:2px solid var(--good);background:transparent}
+.run-pick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Founders Cooperative simulator</h1>
+  <p>Each run plays out 20 years of founders, alumni and campuses making self-interested choices. Move the sliders to see which assumptions make the cooperative survive, and which make it collapse.</p>
+</header>
+
+<main class="layout">
+  <section class="controls" aria-label="Parameters">
+    <div class="presets" role="group" aria-label="Scenarios" id="presets"></div>
+    <div id="groups"></div>
+    <div class="toolbar"><button id="reset" type="button">Reset to base proposal</button></div>
+  </section>
+
+  <section class="results" aria-live="polite">
+    <div class="panel">
+      <div class="verdict">
+        <div class="big" id="pct">–</div>
+        <div>
+          <h2 id="verdictTitle">Running…</h2>
+          <p id="verdictText"></p>
+        </div>
+        <div class="scale" aria-hidden="true"><div class="mark" id="mark" style="left:0%"></div></div>
+        <div class="scale-labels" aria-hidden="true"><span>Likely to fail</span><span>Coin flip</span><span>Likely to succeed</span></div>
+      </div>
+      <div class="toolbar">
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="vizPanel">
+      <h3>Watch one run unfold</h3>
+      <p class="sub">Each dot is a founder. Watch which campuses join, who leaves for Silicon Valley, New York and other hubs, and when exits start paying back.</p>
+      <div class="run-pick" role="group" aria-label="Choose a run">
+        <button type="button" data-pick="success">Typical success</button>
+        <button type="button" data-pick="failure">Typical failure</button>
+        <button type="button" data-pick="random">Random run</button>
+      </div>
+      <div class="stage-wrap"><canvas id="stage" role="img" aria-label="Animated view of one simulated run"></canvas></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--accent)"></i>Founder backed by the co-op</span>
+        <span><i class="dot" style="background:var(--wheat)"></i>Founder leaves for a VC hub</span>
+        <span><i class="dot" style="background:var(--good)"></i>Exit pays back the fund</span>
+        <span><i class="ring"></i>Mentors on campus</span>
+      </div>
+      <div class="viz-controls">
+        <button type="button" id="play">Play</button>
+        <span class="viz-year" id="vizYear">Year 1</span>
+        <input type="range" id="scrub" min="1" max="20" step="1" value="1" aria-label="Year">
+        <label class="status" for="speed">Speed</label>
+        <select id="speed"><option value="0.5">Slow</option><option value="1" selected>Normal</option><option value="2">Fast</option></select>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Which test fails</h3>
+      <p class="sub">A run succeeds only if it passes all three by the final year.</p>
+      <div class="criteria" id="criteria"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Fund size over time</h3>
+      <p class="sub">Median run, with the middle 80% of runs shaded.</p>
+      <div class="chart-wrap"><svg class="chart" id="poolChart" viewBox="0 0 640 270" role="img" aria-label="Fund size over time"></svg></div>
+      <div class="legend" id="poolLegend"></div>
+      <div class="readout" id="poolReadout">Hover over the chart for yearly values.</div>
+      <div class="toolbar">
+        <button type="button" id="pin">Pin this result for comparison</button>
+        <button type="button" id="unpin" hidden>Clear pin</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Network strength vs Silicon Valley, NYC and Boston</h3>
+      <p class="sub">The cooperative only attracts strong founders once its network support approaches the advantage of the big VC hubs.</p>
+      <div class="chart-wrap"><svg class="chart" id="supChart" viewBox="0 0 640 230" role="img" aria-label="Network support over time"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Co-op network support (median)</span>
+        <span><i style="background:var(--wheat)"></i>Average VC hub advantage</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>End state, median run</h3>
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>This is a stylized model for exploring assumptions, not a forecast. Each run also randomizes alumni appetite (around the median you set), VC hub strength (±0.125 around your value) and the market for exits (±40%), so results show a spread of possible futures.</p>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- parameter definitions ---------- */
+const $ = id => document.getElementById(id);
+const money = k => k >= 1000 ? "$" + (k/1000).toFixed(k >= 10000 ? 0 : 1) + "M" : "$" + Math.round(k) + "k";
+const pct = (v, d=0) => v.toFixed(d) + "%";
+
+const GROUPS = [
+  {id:"rollout", title:"Rollout", note:"How the cooperative launches and how long we watch it."},
+  {id:"founders", title:"Founders", note:"Who is building companies and what their outside options are."},
+  {id:"fund", title:"Fund economics", note:"How money goes in and comes back."},
+  {id:"alumni", title:"Alumni", note:"The biggest unknown: how many graduates join and stay."},
+  {id:"network", title:"Network effect", note:"How quickly the network becomes valuable."},
+  {id:"campuses", title:"Campuses", note:"What universities pay, gain, and when they walk away."},
+  {id:"success", title:"Success tests", note:"What counts as success in the final years."}
+];
+
+const PARAMS = [
+  {g:"rollout", k:"rollout", type:"select", label:"Rollout", def:"pilot",
+    options:[["pilot","Pilot: 3 campuses, grows to 18"],["all","All 18 campuses from year 1"]],
+    hint:"The pilot starts with Michigan, Wisconsin and Illinois, then adds 5 campuses in each of years 3–5 if alumni participation stays above 0.4%."},
+  {g:"rollout", k:"years", label:"Years simulated", min:12, max:30, step:1, def:20, fmt:v=>v+" years"},
+  {g:"rollout", k:"runs", label:"Simulation runs", min:100, max:1000, step:50, def:400, fmt:v=>v, hint:"More runs give smoother results but take longer."},
+
+  {g:"founders", k:"foundersPer", label:"Founders per campus each year", min:10, max:100, step:5, def:40, fmt:v=>v},
+  {g:"founders", k:"vcQ", label:"Quality needed for a VC offer", min:0.2, max:0.7, step:0.05, def:0.40, fmt:v=>v.toFixed(2), hint:"Founder quality runs 0–1 and averages about 0.29."},
+  {g:"founders", k:"vcProb", label:"Chance a strong founder gets a VC offer", min:0, max:100, step:5, def:60, fmt:v=>pct(v)},
+  {g:"founders", k:"vcBoost", label:"VC hub advantage (Silicon Valley, NYC, Boston)", min:0.1, max:0.6, step:0.025, def:0.325, fmt:v=>v.toFixed(3), hint:"How much more the big hubs raise a startup's odds."},
+  {g:"founders", k:"reloc", label:"Cost of relocating to a VC hub", min:0, max:20, step:1, def:8, fmt:v=>pct(v), hint:"Share of expected value lost by moving."},
+  {g:"founders", k:"exitYears", label:"Years from investment to exit", min:4, max:10, step:1, def:7, fmt:v=>v+" years"},
+
+  {g:"fund", k:"check", label:"Check size per startup", min:100, max:1000, step:25, def:250, fmt:money},
+  {g:"fund", k:"stake", label:"Fund stake at investment", min:5, max:20, step:1, def:10, fmt:v=>pct(v)},
+  {g:"fund", k:"dilution", label:"Stake remaining at exit", min:30, max:100, step:5, def:60, fmt:v=>pct(v), hint:"Later rounds dilute the fund. 60% turns a 10% stake into 6%."},
+  {g:"fund", k:"pledge", label:"Founder pledge", min:0, max:5, step:0.25, def:1.5, fmt:v=>pct(v,2), hint:"Share of exit value founders give back to the pool."},
+  {g:"fund", k:"honor", label:"Pledges actually honored", min:0, max:100, step:5, def:100, fmt:v=>pct(v), hint:"100% means a binding equity grant; lower means voluntary."},
+  {g:"fund", k:"deployCap", label:"Share of pool invested each year", min:10, max:60, step:5, def:35, fmt:v=>pct(v)},
+  {g:"fund", k:"successMult", label:"Startup success rate multiplier", min:0.1, max:0.6, step:0.05, def:0.30, fmt:v=>v.toFixed(2), hint:"At 0.30, an average founder has about a 3–6% chance of a good exit."},
+  {g:"fund", k:"exitMedian", label:"Median exit value", min:5, max:100, step:5, def:25, fmt:v=>"$"+v+"M"},
+  {g:"fund", k:"exitSigma", label:"Spread of exit values", min:0.8, max:2.2, step:0.1, def:1.6, fmt:v=>v.toFixed(1), hint:"Higher means rarer but bigger outliers."},
+  {g:"fund", k:"opex", label:"Operating cost per campus per year", min:0, max:300, step:25, def:100, fmt:money},
+
+  {g:"alumni", k:"alumni", label:"Reachable alumni per campus", min:5000, max:50000, step:1000, def:20000, fmt:v=>v.toLocaleString("en-US")},
+  {g:"alumni", k:"ticket", label:"Average yearly contribution", min:250, max:10000, step:250, def:2000, fmt:v=>"$"+v.toLocaleString("en-US")},
+  {g:"alumni", k:"part0", label:"Initial alumni participation (median)", min:0.1, max:3, step:0.1, def:0.8, fmt:v=>pct(v,1), hint:"Randomized per run. Below about 0.5%, the network rarely reaches critical mass."},
+  {g:"alumni", k:"warm", label:"Enthusiasm that persists without returns", min:0, max:1, step:0.05, def:0.8, fmt:v=>pct(v*100)},
+  {g:"alumni", k:"freeride", label:"Free-riding pressure", min:0, max:0.6, step:0.05, def:0.3, fmt:v=>pct(v*100), hint:"How much participation drops as more campuses join."},
+
+  {g:"network", k:"maxSupport", label:"Maximum network support", min:0.1, max:0.6, step:0.025, def:0.35, fmt:v=>v.toFixed(3), hint:"The ceiling a fully mature network can reach."},
+  {g:"network", k:"scale", label:"Critical mass needed", min:100, max:600, step:25, def:250, fmt:v=>v+" pts", hint:"Density points come from mentors, active alumni and campuses."},
+  {g:"network", k:"mentorW", label:"Density points per successful founder", min:0, max:10, step:0.5, def:3, fmt:v=>v.toFixed(1)},
+
+  {g:"campuses", k:"anchor", label:"Anchor capital per campus per year", min:0, max:3, step:0.05, def:1.0, fmt:v=>"$"+v.toFixed(2)+"M"},
+  {g:"campuses", k:"anchorYears", label:"Years of anchor funding", min:0, max:10, step:1, def:5, fmt:v=>v+" years", hint:"Campuses cannot leave while anchors are committed."},
+  {g:"campuses", k:"ongoing", label:"Ongoing campus cost after anchors", min:0, max:500, step:25, def:200, fmt:money},
+  {g:"campuses", k:"valueFounder", label:"Value to a campus per retained founder", min:0, max:500, step:10, def:150, fmt:money},
+  {g:"campuses", k:"rivalry", label:"Campus rivalry", min:0, max:0.9, step:0.05, def:0.3, fmt:v=>pct(v*100), hint:"Share of value lost to credit disputes between schools."},
+  {g:"campuses", k:"patience", label:"Bad years before a campus leaves", min:1, max:5, step:1, def:3, fmt:v=>v},
+
+  {g:"success", k:"coverage", label:"Exits must cover new investment", min:50, max:120, step:5, def:80, fmt:v=>pct(v), hint:"Measured over the last 5 years, with no anchor money."},
+  {g:"success", k:"minCampuses", label:"Campuses still in", min:3, max:18, step:1, def:9, fmt:v=>"at least "+v},
+  {g:"success", k:"minRet", label:"Strong founders the co-op backs", min:10, max:60, step:5, def:25, fmt:v=>"at least "+pct(v)}
+];
+
+const DEFAULTS = Object.fromEntries(PARAMS.map(p=>[p.k,p.def]));
+const PRESETS = [
+  {id:"base", label:"Base proposal", set:{}},
+  {id:"hybrid", label:"Hybrid network", set:{rollout:"all", anchor:0.15}},
+  {id:"revised", label:"Revised proposal", set:{rollout:"all", anchor:0.5, anchorYears:8, part0:1.0}},
+  {id:"bigbang", label:"All 18, full anchor", set:{rollout:"all"}},
+  {id:"weak", label:"Weak commitment", set:{anchor:0.25, honor:30}}
+];
+
+/* ---------- build controls ---------- */
+const P = Object.assign({}, DEFAULTS);
+const inputs = {};
+const groupsEl = $("groups");
+GROUPS.forEach(g=>{
+  const fs = document.createElement("fieldset");
+  fs.innerHTML = `<legend>${g.title}</legend><p class="group-note">${g.note}</p>`;
+  PARAMS.filter(p=>p.g===g.id).forEach(p=>{
+    const row = document.createElement("div");
+    row.className = "row";
+    const id = "p_"+p.k;
+    if(p.type==="select"){
+      row.innerHTML = `<div class="top"><label for="${id}">${p.label}</label></div>
+        <select id="${id}">${p.options.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join("")}</select>
+        ${p.hint?`<div class="hint">${p.hint}</div>`:""}`;
+    } else {
+      row.innerHTML = `<div class="top"><label for="${id}">${p.label}</label><output id="${id}_o" for="${id}"></output></div>
+        <input type="range" id="${id}" min="${p.min}" max="${p.max}" step="${p.step}">
+        ${p.hint?`<div class="hint">${p.hint}</div>`:""}`;
+    }
+    fs.appendChild(row);
+    inputs[p.k] = {p, row};
+  });
+  groupsEl.appendChild(fs);
+});
+PARAMS.forEach(p=>{
+  const el = $("p_"+p.k);
+  inputs[p.k].el = el;
+  inputs[p.k].out = $("p_"+p.k+"_o");
+  el.addEventListener("input", ()=>{
+    P[p.k] = p.type==="select" ? el.value : parseFloat(el.value);
+    syncLabel(p.k);
+    markPreset(null);
+    schedule();
+  });
+});
+function syncLabel(k){
+  const {p,out} = inputs[k];
+  if(out) out.textContent = p.fmt(P[k]);
+}
+function applyValues(vals){
+  Object.assign(P, DEFAULTS, vals);
+  PARAMS.forEach(p=>{ inputs[p.k].el.value = P[p.k]; syncLabel(p.k); });
+}
+
+const presetsEl = $("presets");
+PRESETS.forEach(pr=>{
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = pr.label; b.dataset.id = pr.id;
+  b.setAttribute("aria-pressed","false");
+  b.addEventListener("click", ()=>{ applyValues(pr.set); markPreset(pr.id); runAll(); });
+  presetsEl.appendChild(b);
+});
+function markPreset(id){
+  presetsEl.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.id===id)));
+}
+$("reset").addEventListener("click", ()=>{ applyValues({}); markPreset("base"); runAll(); });
+
+/* ---------- simulation ---------- */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+function simulate(seed, P, trace){
+  const rnd = mulberry32(seed*2654435761 + 12345);
+  const nrm = ()=>{ let u=0; while(u===0) u=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd()); };
+  const gam = k=>{ let s=0; for(let i=0;i<k;i++) s -= Math.log(1-rnd()); return s; };
+  const beta25 = ()=>{ const x=gam(2), y=gam(5); return x/(x+y); };
+  const Y = P.years, MAXC = 18;
+  const pilot = P.rollout === "pilot";
+  let active = pilot ? 3 : MAXC;
+  let part = Math.min(0.1, Math.max(0.001, Math.exp(Math.log(P.part0/100) + 0.5*nrm())));
+  const part0 = part;
+  const vcBoost = P.vcBoost + (rnd()-0.5)*0.25;
+  const exitMed = P.exitMedian*1000*Math.exp(0.4*nrm());
+  const stakeExit = (P.stake/100)*(P.dilution/100);
+  const ticket = P.ticket/1000;
+  let pool = 0, mentors = 0;
+  let pipe = [];
+  const unhappy = new Array(MAXC).fill(0);
+  const H = {pool:[], active:[], part:[], support:[], ret:[], inflow:[], deploy:[]};
+  const T = trace ? [] : null;
+  let exitsBy = null, vcBy = null;
+
+  for(let t=0; t<Y; t++){
+    if(pilot && (t===2||t===3||t===4) && active < MAXC){
+      if(part >= 0.004 && pool > 0) active = Math.min(MAXC, active+5);
+    }
+    const density = mentors*P.mentorW + active*part*P.alumni/25 + active*4;
+    const th = Math.tanh(density/P.scale);
+    const support = P.maxSupport*th*th;
+    const contrib = active*P.alumni*part*ticket;
+    const anch = t < P.anchorYears ? active*P.anchor*1000 : 0;
+
+    let inflow = 0;
+    const still = [];
+    if(T){ exitsBy = []; vcBy = new Array(active).fill(0); }
+    for(const s of pipe){
+      if(s.m === t){
+        if(rnd() < Math.min(0.9, P.successMult*s.q*(0.35+s.s))){
+          const ex = exitMed*Math.exp(P.exitSigma*nrm());
+          inflow += stakeExit*ex + (rnd() < P.honor/100 ? (P.pledge/100)*ex : 0);
+          mentors += 1;
+          if(T) exitsBy.push(s.c);
+        }
+      } else still.push(s);
+    }
+    pipe = still;
+    pool += contrib + anch + inflow;
+
+    const n = active*P.foundersPer;
+    const cands = [];
+    let hiCount = 0;
+    const keep = 1 - P.stake/100 - P.pledge/100;
+    for(let i=0;i<n;i++){
+      const q = beta25();
+      const camp = Math.floor(rnd()*active);
+      const hasVC = q > P.vcQ && rnd() < P.vcProb/100;
+      const home = 0.03*nrm();
+      const uCoop = q*(0.35+support)*keep + home;
+      const uVC = q*(0.35+vcBoost)*0.75 - (P.reloc/100)*q;
+      if(q > 0.45) hiCount++;
+      if((!hasVC || uCoop > uVC) && q > 0.15) cands.push([q,camp]);
+      else if(T && hasVC) vcBy[camp]++;
+    }
+    cands.sort((a,b)=>b[0]-a[0]);
+    const k = Math.floor((P.deployCap/100)*pool/P.check);
+    const chosen = cands.slice(0, Math.max(0,k));
+    const deploy = chosen.length*P.check;
+    pool -= deploy;
+    pool -= P.opex*active;
+    if(pool < 0) pool = 0;
+    const perC = new Array(active).fill(0);
+    let hiFunded = 0;
+    for(const [q,c] of chosen){
+      perC[c]++;
+      if(q > 0.45) hiFunded++;
+      pipe.push({m:t+P.exitYears, q, s:support, c});
+    }
+    const ret = hiFunded/Math.max(1,hiCount);
+
+    const signal = inflow/Math.max(1, contrib+anch);
+    const target = P.warm*part0 + 0.05*Math.tanh(signal) + 0.02*Math.tanh(mentors/20) - P.freeride*part0*(active/MAXC);
+    part += 0.3*(target - part);
+    if(part < 0.002) part = 0.002;
+
+    if(t >= P.anchorYears){
+      let drop = 0;
+      for(let c=0;c<active;c++){
+        const benefit = perC[c]*P.valueFounder*(1-P.rivalry) + mentors/Math.max(1,active)*40 + support*1500;
+        unhappy[c] = benefit < P.ongoing ? unhappy[c]+1 : 0;
+        if(unhappy[c] >= P.patience) drop++;
+      }
+      if(drop){ active = Math.max(0, active-drop); unhappy.fill(0); }
+    }
+
+    if(T) T.push({activeStart: perC.length, active, coop: perC.slice(), vc: vcBy, exits: exitsBy, pool, support, part, mentors, inflow});
+    H.pool.push(pool); H.active.push(active); H.part.push(part); H.support.push(support);
+    H.ret.push(ret); H.inflow.push(inflow); H.deploy.push(deploy);
+    if(active === 0){
+      for(let r=t+1;r<Y;r++){ for(const key in H) H[key].push(0); }
+      break;
+    }
+  }
+  const L = 5, from = Y-L;
+  let sIn=0, sDep=0, sRet=0;
+  for(let i=from;i<Y;i++){ sIn+=H.inflow[i]; sDep+=H.deploy[i]; sRet+=H.ret[i]; }
+  const selfsust = sIn >= (P.coverage/100)*sDep && H.pool[Y-1] > 0;
+  const campOk = H.active[Y-1] >= P.minCampuses;
+  const retOk = sRet/L >= P.minRet/100;
+  return {ok: selfsust && campOk && retOk, selfsust, campOk, retOk, H, T};
+}
+
+/* ---------- running ---------- */
+let timer = null, token = 0, pinned = null, last = null;
+function schedule(){ clearTimeout(timer); timer = setTimeout(runAll, 280); }
+
+async function runAll(){
+  const my = ++token;
+  const params = Object.assign({}, P);
+  const N = params.runs, Y = params.years;
+  $("status").textContent = `Running ${N} simulations…`;
+  const t0 = performance.now();
+  const res = [];
+  for(let s=0; s<N; s+=50){
+    for(let i=s; i<Math.min(N,s+50); i++) res.push(simulate(i+1, params));
+    await new Promise(r=>setTimeout(r,0));
+    if(my !== token) return;
+  }
+  const q = (arr,p)=>{ const a=[...arr].sort((x,y)=>x-y); const i=(a.length-1)*p, lo=Math.floor(i), hi=Math.ceil(i); return a[lo]+(a[hi]-a[lo])*(i-lo); };
+  const yearly = key => Array.from({length:Y},(_,y)=>res.map(r=>r.H[key][y]));
+  const poolY = yearly("pool"), supY = yearly("support"), actY = yearly("active"), partY = yearly("part");
+  const out = {
+    Y, params,
+    ok: res.filter(r=>r.ok).length/N,
+    self: res.filter(r=>r.selfsust).length/N,
+    camp: res.filter(r=>r.campOk).length/N,
+    ret: res.filter(r=>r.retOk).length/N,
+    p10: poolY.map(a=>q(a,.1)/1000), p50: poolY.map(a=>q(a,.5)/1000), p90: poolY.map(a=>q(a,.9)/1000),
+    sup: supY.map(a=>q(a,.5)),
+    act: actY.map(a=>q(a,.5)),
+    part: partY.map(a=>q(a,.5))
+  };
+  out.runs = res.map((r,i)=>({seed:i+1, ok:r.ok, fin:r.H.pool[Y-1]}));
+  last = out;
+  render(out);
+  viz.load(out);
+  $("status").textContent = `${N} simulations in ${((performance.now()-t0)/1000).toFixed(1)}s`;
+}
+
+/* ---------- rendering ---------- */
+function render(o){
+  const v = Math.round(o.ok*100);
+  $("pct").textContent = v + "%";
+  $("mark").style.left = Math.min(100,Math.max(0,v)) + "%";
+  let title, text, color;
+  const weakest = [["self-sufficiency",o.self],["campus retention",o.camp],["founder retention",o.ret]].sort((a,b)=>a[1]-b[1])[0];
+  if(v < 30){ title="Likely to fail"; color="var(--bad)";
+    text=`Most runs collapse. The weakest link is ${weakest[0]}, which only ${Math.round(weakest[1]*100)}% of runs pass.`; }
+  else if(v < 60){ title="A coin flip"; color="var(--mid)";
+    text=`The design can work, but luck matters. The weakest link is ${weakest[0]} (${Math.round(weakest[1]*100)}% of runs pass).`; }
+  else { title="Likely to succeed"; color="var(--good)";
+    text=`Most runs become self-sustaining. The remaining risk comes mainly from ${weakest[0]}.`; }
+  $("pct").style.color = color;
+  $("verdictTitle").textContent = title;
+  $("verdictText").textContent = text;
+
+  const crit = [
+    ["Exits fund new investment", o.self],
+    [`At least ${o.params.minCampuses} campuses remain`, o.camp],
+    [`Backs at least ${o.params.minRet}% of strong founders`, o.ret]
+  ];
+  $("criteria").innerHTML = crit.map(([l,val])=>`<div class="crit"><div class="top"><span>${l}</span><span>${Math.round(val*100)}% of runs pass</span></div><div class="bar"><i style="width:${val*100}%"></i></div></div>`).join("");
+
+  drawPool(o);
+  drawSupport(o);
+
+  let troughY = 0, peakBefore = 0;
+  const firstExit = o.params.exitYears;
+  for(let i=Math.max(0,o.params.anchorYears-1); i<o.Y; i++){
+    if(o.p50[i] < o.p50[troughY] || troughY < o.params.anchorYears-1) troughY = i;
+    if(i > firstExit + 3) break;
+  }
+  const crossIdx = o.sup.findIndex(s=>s >= o.params.vcBoost*0.8);
+  $("stats").innerHTML = [
+    [money(o.p50[o.Y-1]*1000), "Fund size in final year"],
+    [Math.round(o.act[o.Y-1]) + " of 18", "Campuses still in"],
+    [pct(o.part[o.Y-1]*100,2), "Alumni participation"],
+    [crossIdx >= 0 ? "Year " + (crossIdx+1) : "Never", "Network nears VC hub strength"]
+  ].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+}
+
+function niceMax(v){
+  if(v <= 0) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v)));
+  for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]) if(m*e >= v) return m*e;
+  return 10*e;
+}
+
+function frame(Y, H, yMax, yFmt){
+  const W=640, ml=52, mr=14, mt=14, mb=30;
+  const X = i => ml + i*(W-ml-mr)/Math.max(1,Y-1);
+  const Yp = v => mt + (H-mt-mb)*(1 - Math.min(v,yMax)/yMax);
+  let s = "";
+  for(let k=0;k<=4;k++){
+    const val = yMax*k/4, y = Yp(val);
+    s += `<line x1="${ml}" x2="${W-mr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${ml-8}" y="${y+4}" text-anchor="end">${yFmt(val)}</text>`;
+  }
+  const stepX = Y > 20 ? 5 : (Y > 12 ? 2 : 1);
+  for(let i=0;i<Y;i++){
+    if((i+1)%stepX===0 || i===0) s += `<text x="${X(i)}" y="${H-10}" text-anchor="middle">Y${i+1}</text>`;
+  }
+  return {W, ml, mr, mt, mb, X, Yp, s};
+}
+const path = (arr, X, Yp) => arr.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Yp(v).toFixed(1)}`).join("");
+
+function drawPool(o){
+  const svg = $("poolChart"), H = 270, Y = o.Y;
+  const top = Math.max(...o.p90, pinned && pinned.Y===Y ? Math.max(...pinned.p50) : 0);
+  const yMax = niceMax(top*1.05);
+  const f = frame(Y, H, yMax, v=>"$"+(v>=10?Math.round(v):v.toFixed(1))+"M");
+  let s = "";
+  const aY = Math.min(o.params.anchorYears, Y);
+  if(aY > 0){
+    const x2 = aY >= Y ? f.X(Y-1) : f.X(aY-0.5);
+    s += `<rect x="${f.ml}" y="${f.mt}" width="${Math.max(0,x2-f.ml)}" height="${H-f.mt-f.mb}" fill="var(--wheat-soft)"/>`;
+    s += `<text x="${f.ml+6}" y="${f.mt+13}" style="fill:var(--wheat)">Anchor funding</text>`;
+  }
+  const ex = o.params.exitYears;
+  if(ex < Y){
+    const x = f.X(ex);
+    s += `<line x1="${x}" x2="${x}" y1="${f.mt}" y2="${H-f.mb}" stroke="var(--muted)" stroke-dasharray="3 4"/>`;
+    s += `<text x="${x+5}" y="${f.mt+28}">First exits due</text>`;
+  }
+  s += f.s;
+  const band = o.p90.map((v,i)=>`${i?"L":"M"}${f.X(i).toFixed(1)},${f.Yp(v).toFixed(1)}`).join("") +
+    o.p10.map((v,i)=>[i,v]).reverse().map(([i,v])=>`L${f.X(i).toFixed(1)},${f.Yp(v).toFixed(1)}`).join("") + "Z";
+  s += `<path d="${band}" fill="var(--band)"/>`;
+  if(pinned && pinned.Y === Y) s += `<path d="${path(pinned.p50,f.X,f.Yp)}" fill="none" stroke="var(--pin)" stroke-width="2" stroke-dasharray="6 5"/>`;
+  s += `<path d="${path(o.p50,f.X,f.Yp)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
+  s += `<line id="cross" x1="0" x2="0" y1="${f.mt}" y2="${H-f.mb}" stroke="var(--ink)" stroke-width="1" opacity="0"/>`;
+  s += `<rect x="${f.ml}" y="${f.mt}" width="${f.W-f.ml-f.mr}" height="${H-f.mt-f.mb}" fill="transparent" id="hit"/>`;
+  svg.innerHTML = s;
+
+  $("poolLegend").innerHTML = `<span><i style="background:var(--accent)"></i>Median</span><span><i style="background:var(--band);height:10px"></i>Middle 80% of runs</span>` +
+    (pinned && pinned.Y===Y ? `<span><i style="background:var(--pin)"></i>Pinned: ${pinned.label}</span>` : "");
+
+  const hit = svg.querySelector("#hit"), cross = svg.querySelector("#cross");
+  const show = e=>{
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(Y-1, Math.round((loc.x-f.ml)/((f.W-f.ml-f.mr)/Math.max(1,Y-1)))));
+    cross.setAttribute("x1", f.X(i)); cross.setAttribute("x2", f.X(i)); cross.setAttribute("opacity",".5");
+    const fm = v=>money(v*1000);
+    let txt = `Year ${i+1}: median ${fm(o.p50[i])}, middle 80% between ${fm(o.p10[i])} and ${fm(o.p90[i])}. Median campuses: ${Math.round(o.act[i])}.`;
+    if(pinned && pinned.Y===Y) txt += ` Pinned median: ${fm(pinned.p50[i])}.`;
+    $("poolReadout").textContent = txt;
+  };
+  hit.addEventListener("pointermove", show);
+  hit.addEventListener("pointerdown", show);
+  hit.addEventListener("pointerleave", ()=>cross.setAttribute("opacity","0"));
+}
+
+function drawSupport(o){
+  const svg = $("supChart"), H = 230, Y = o.Y;
+  const yMax = niceMax(Math.max(o.params.maxSupport, o.params.vcBoost)*1.1);
+  const f = frame(Y, H, yMax, v=>v.toFixed(2));
+  let s = f.s;
+  const yv = f.Yp(o.params.vcBoost);
+  s += `<line x1="${f.ml}" x2="${f.W-f.mr}" y1="${yv}" y2="${yv}" stroke="var(--wheat)" stroke-width="2" stroke-dasharray="6 5"/>`;
+  s += `<path d="${path(o.sup,f.X,f.Yp)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
+  svg.innerHTML = s;
+}
+
+$("pin").addEventListener("click", ()=>{
+  if(!last) return;
+  const active = presetsEl.querySelector('button[aria-pressed="true"]');
+  pinned = {p50:last.p50.slice(), Y:last.Y, label: active ? active.textContent : Math.round(last.ok*100)+"% scenario"};
+  $("unpin").hidden = false;
+  render(last);
+});
+$("unpin").addEventListener("click", ()=>{ pinned = null; $("unpin").hidden = true; if(last) render(last); });
+
+
+/* ---------- animated run view ---------- */
+const viz = (function(){
+  const cv = $("stage"), ctx = cv.getContext("2d");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W=640, H=380, dpr=1;
+  let run=null, T=[], params=null, Yn=0, maxPool=1, totalLost=1;
+  let year=0, phase=1, playing=false, lastTs=0, speed=1, pick="auto", firstLoad=true;
+  let particles=[], mentorsBy=new Array(18).fill(0), maxActiveSeen=0;
+  const colors = {};
+  function readColors(){
+    const cs = getComputedStyle(document.documentElement);
+    ["bg","surface","ink","muted","line","accent","band","wheat","wheat-soft","good","bad"].forEach(k=>colors[k]=cs.getPropertyValue("--"+k).trim());
+  }
+  function resize(){
+    const w = cv.parentElement.clientWidth || 640;
+    W = w; H = Math.max(300, Math.min(440, w*0.6));
+    dpr = window.devicePixelRatio || 1;
+    cv.width = W*dpr; cv.height = H*dpr; cv.style.height = H+"px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+  const CAMPUS = [
+    ["Michigan","MICH"],["Wisconsin","WIS"],["Illinois","ILL"],["Purdue","PUR"],["Ohio State","OSU"],
+    ["Northwestern","NU"],["Minnesota","MINN"],["Indiana","IND"],["Penn State","PSU"],["Michigan State","MSU"],
+    ["Maryland","MD"],["Iowa","IOWA"],["Rutgers","RUT"],["Nebraska","NEB"],["UCLA","UCLA"],
+    ["USC","USC"],["Washington","WASH"],["Oregon","ORE"]
+  ];
+  const DEST = [
+    {name:"Silicon Valley", short:"SV", w:0.42},
+    {name:"New York", short:"NYC", w:0.24},
+    {name:"Boston", short:"BOS", w:0.14},
+    {name:"Los Angeles", short:"LA", w:0.08},
+    {name:"Seattle", short:"SEA", w:0.06},
+    {name:"Austin", short:"ATX", w:0.06}
+  ];
+  const wide = ()=>W >= 620;
+  const destCol = ()=>wide() ? 150 : 74;
+  const hub = ()=>({x: (W-destCol())/2 + 6, y: H*0.52});
+  const ringR = ()=>Math.max(60, Math.min((W-destCol())/2 - (wide() ? 92 : 36), H*0.37));
+  function destPos(d){
+    const top = H*0.14, bot = H*0.90;
+    return {x: W - 22, y: top + d*(bot-top)/(DEST.length-1)};
+  }
+  function pickDest(){
+    let r = Math.random(), acc = 0;
+    for(let d=0; d<DEST.length; d++){ acc += DEST[d].w; if(r < acc) return d; }
+    return 0;
+  }
+  function campusPos(i){
+    const h = hub(), r = ringR(), a = -Math.PI/2 + i*(2*Math.PI/18);
+    return {x: h.x + r*Math.cos(a), y: h.y + r*Math.sin(a)};
+  }
+
+  function choose(o){
+    const runs = o.runs;
+    let group;
+    if(pick==="random") return runs[Math.floor(Math.random()*runs.length)];
+    let want = pick;
+    if(pick==="auto") want = o.ok >= 0.5 ? "success" : "failure";
+    group = runs.filter(r => want==="success" ? r.ok : !r.ok);
+    if(!group.length) group = runs;
+    const sorted = group.map(r=>r.fin).sort((a,b)=>a-b);
+    const med = sorted[Math.floor(sorted.length/2)];
+    return group.reduce((best,r)=>Math.abs(r.fin-med) < Math.abs(best.fin-med) ? r : best, group[0]);
+  }
+
+  function load(o){
+    params = o.params;
+    run = choose(o);
+    const sim = simulate(run.seed, params, true);
+    T = sim.T.slice();
+    const lastT = T[T.length-1];
+    while(T.length < o.Y) T.push(Object.assign({}, lastT, {active:0, activeStart:0, coop:[], vc:[], exits:[], pool:0, inflow:0}));
+    Yn = T.length;
+    maxPool = Math.max(1, ...T.map(t=>t.pool));
+    totalLost = T.reduce((a,t)=>a+(t.vc||[]).reduce((x,y)=>x+y,0),0);
+    $("scrub").max = Yn;
+    document.querySelectorAll("[data-pick]").forEach(b=>{
+      const has = b.dataset.pick==="random" || o.runs.some(r => b.dataset.pick==="success" ? r.ok : !r.ok);
+      b.disabled = !has;
+      b.setAttribute("aria-pressed", String(b.dataset.pick === (pick==="auto" ? (o.ok>=0.5?"success":"failure") : pick)));
+    });
+    readColors();
+    startYear(0); draw();
+  }
+
+  function rebuildMentors(upTo){
+    mentorsBy = new Array(18).fill(0); maxActiveSeen = 0;
+    for(let y=0;y<=upTo && y<Yn;y++){
+      (T[y].exits||[]).forEach(c=>mentorsBy[c]++);
+      maxActiveSeen = Math.max(maxActiveSeen, T[y].activeStart, T[y].active);
+    }
+  }
+
+  function goTo(y){
+    year = Math.max(0, Math.min(Yn-1, y));
+    phase = 1; particles = [];
+    rebuildMentors(year);
+    updateUI(); draw();
+  }
+  function spawn(y){
+    particles = [];
+    const t = T[y];
+    const cap = 7;
+    const h = hub();
+    const push = (from,to,color,delay)=>particles.push({from,to,color,delay,life:0.55});
+    t.coop.forEach((n,c)=>{
+      const p = campusPos(c);
+      const dx=p.x-h.x, dy=p.y-h.y, dl=Math.hypot(dx,dy)||1;
+      for(let k=0;k<Math.min(cap,n);k++) push(p, {x:h.x+dx/dl*26+(Math.random()-.5)*8, y:h.y+dy/dl*26+(Math.random()-.5)*8}, "accent", Math.random()*0.35);
+    });
+    (t.vc||[]).forEach((n,c)=>{
+      const p = campusPos(c);
+      for(let k=0;k<Math.min(cap,n);k++){ const dp = destPos(pickDest()); push(p, {x:dp.x+(Math.random()-.5)*8, y:dp.y+(Math.random()-.5)*8}, "wheat", Math.random()*0.35); }
+    });
+    (t.exits||[]).forEach(c=>{
+      const p = campusPos(c);
+      particles.push({from:{x:h.x,y:h.y}, to:p, color:"good", delay:0.45+Math.random()*0.15, life:0.4, big:true, camp:c});
+    });
+  }
+
+  function startYear(y){
+    year = y;
+    rebuildMentors(year-1);
+    phase = 0;
+    if(reduce) particles = []; else spawn(year);
+    updateUI();
+  }
+  function play(){
+    if(phase >= 1) startYear(year >= Yn-1 ? 0 : year+1);
+    playing = true; lastTs = 0; updateUI();
+    const id = ++loop; requestAnimationFrame(ts=>tick(ts,id));
+  }
+  function pause(){ playing = false; updateUI(); }
+  let loop = 0;
+  function tick(ts,id){
+    if(!playing || id !== loop) return;
+    if(!lastTs) lastTs = ts;
+    const dt = Math.min(0.1,(ts-lastTs)/1000); lastTs = ts;
+    const dur = reduce ? 0.9 : 1.6;
+    phase += dt*speed/dur;
+    if(phase >= 1){
+      phase = 1;
+      rebuildMentors(year);
+      if(year >= Yn-1){ draw(); pause(); return; }
+      startYear(year+1);
+    }
+    draw();
+    requestAnimationFrame(t=>tick(t,id));
+  }
+
+  const ease = x=>x<.5 ? 2*x*x : 1-Math.pow(-2*x+2,2)/2;
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  function draw(){
+    if(!T.length){ ctx.clearRect(0,0,W,H); return; }
+    const c = colors;
+    ctx.clearRect(0,0,W,H);
+    const t = T[year], prev = year>0 ? T[year-1] : {pool:0, support:0};
+    const ph = ease(Math.min(1,phase));
+    const pool = lerp(prev.pool, t.pool, ph);
+    const sup = lerp(prev.support||0, t.support, ph);
+    const h = hub(), R = ringR();
+
+    // VC hubs where founders go
+    let lostSoFar = 0;
+    for(let y=0; y<year; y++) lostSoFar += (T[y].vc||[]).reduce((a,b)=>a+b,0);
+    lostSoFar += Math.round(ph*(t.vc||[]).reduce((a,b)=>a+b,0));
+    ctx.fillStyle = c["wheat-soft"]; ctx.fillRect(W-destCol()+4, 0, destCol()-4, H);
+    ctx.fillStyle = c.wheat; ctx.textAlign = "right"; ctx.font = "600 11px 'Public Sans',system-ui,sans-serif";
+    ctx.fillText(wide() ? "Where lost founders go" : "Lost to", W-8, H*0.06);
+    DEST.forEach((d,i)=>{
+      const p = destPos(i), n = Math.round(lostSoFar*d.w);
+      const r = 4 + 10*Math.sqrt(n/Math.max(1,totalLost));
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fillStyle = c.wheat; ctx.globalAlpha = .85; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = c.ink; ctx.textAlign = "right"; ctx.font = "600 12px 'Public Sans',system-ui,sans-serif";
+      ctx.fillText(wide() ? d.name : d.short, p.x - 18, p.y - 1);
+      ctx.fillStyle = c.muted; ctx.font = "11px 'Public Sans',system-ui,sans-serif";
+      ctx.fillText(n + (wide() ? " founders" : ""), p.x - 18, p.y + 12);
+    });
+
+    // links
+    const strength = Math.min(1, sup/Math.max(0.01, params.maxSupport));
+    const activeNow = year===0 && phase<1 ? t.activeStart : t.active;
+    for(let i=0;i<18;i++){
+      if(i >= Math.max(t.activeStart, activeNow)) continue;
+      const p = campusPos(i);
+      ctx.strokeStyle = c.accent; ctx.globalAlpha = 0.12 + 0.6*strength;
+      ctx.lineWidth = 0.8 + 3*strength;
+      ctx.beginPath(); ctx.moveTo(h.x,h.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // campuses
+    for(let i=0;i<18;i++){
+      const p = campusPos(i);
+      const inNow = i < t.active;
+      const joinedEver = i < Math.max(maxActiveSeen, t.activeStart);
+      const left = joinedEver && !inNow && phase>=0.5;
+      const m = mentorsBy[i];
+      if(m>0){
+        ctx.strokeStyle = c.good; ctx.lineWidth = Math.min(7, 1.5 + m*0.8);
+        ctx.beginPath(); ctx.arc(p.x,p.y,11+ctx.lineWidth/2,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(p.x,p.y,9,0,Math.PI*2);
+      if(inNow || (i < t.activeStart && phase<0.5)){ ctx.fillStyle = c.accent; ctx.fill(); }
+      else if(left){ ctx.fillStyle = c.bad; ctx.globalAlpha=.55; ctx.fill(); ctx.globalAlpha=1; }
+      else { ctx.setLineDash([3,3]); ctx.strokeStyle = c.muted; ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]); }
+      const a = -Math.PI/2 + i*(2*Math.PI/18), ca = Math.cos(a), sa = Math.sin(a);
+      ctx.fillStyle = inNow ? c.ink : c.muted;
+      ctx.font = (inNow ? "600 " : "") + "11px 'Public Sans',system-ui,sans-serif";
+      ctx.textAlign = ca > 0.25 ? "left" : (ca < -0.25 ? "right" : "center");
+      ctx.fillText(wide() ? CAMPUS[i][0] : CAMPUS[i][1], p.x + 17*ca, p.y + 17*sa + 4);
+    }
+
+    // hub
+    const hr = 16 + (R*0.42)*Math.sqrt(Math.max(0,pool)/maxPool);
+    ctx.beginPath(); ctx.arc(h.x,h.y,hr,0,Math.PI*2);
+    ctx.fillStyle = c.band; ctx.fill();
+    ctx.strokeStyle = c.accent; ctx.lineWidth = 2; ctx.stroke();
+
+    // particles
+    if(phase < 1){
+      for(const pt of particles){
+        const local = (phase - pt.delay)/pt.life;
+        if(local <= 0 || local >= 1) continue;
+        const e = ease(local);
+        const x = lerp(pt.from.x, pt.to.x, e), y = lerp(pt.from.y, pt.to.y, e) - Math.sin(Math.PI*e)*(pt.color==="wheat"?18:8);
+        ctx.beginPath(); ctx.arc(x,y,pt.big?4.5:3,0,Math.PI*2);
+        ctx.fillStyle = c[pt.color]; ctx.globalAlpha = pt.color==="accent" ? 0.9*(1-Math.pow(local,4)) : 0.9; ctx.fill(); ctx.globalAlpha = 1;
+      }
+    }
+
+    ctx.fillStyle = c.ink; ctx.textAlign="center";
+    ctx.font = "700 15px 'Public Sans',system-ui,sans-serif";
+    ctx.fillText(money(pool), h.x, h.y+2);
+    ctx.fillStyle = c.muted; ctx.font = "11px 'Public Sans',system-ui,sans-serif";
+    ctx.fillText("Co-op fund", h.x, h.y+17);
+
+    // year stamp
+    ctx.fillStyle = c.ink; ctx.textAlign="left"; ctx.font = "800 20px 'Public Sans',system-ui,sans-serif";
+    ctx.fillText("Year "+(year+1), 12, 26);
+    if(year < params.anchorYears){
+      ctx.fillStyle = c.wheat; ctx.font = "600 12px 'Public Sans',system-ui,sans-serif";
+      ctx.fillText("Anchor funding active", 12, 44);
+    } else if(year < params.exitYears){
+      ctx.fillStyle = c.bad; ctx.font = "600 12px 'Public Sans',system-ui,sans-serif";
+      ctx.fillText("No anchors, no exits yet", 12, 44);
+    }
+  }
+
+  function updateUI(){
+    if(!T.length) return;
+    const t = T[year];
+    $("vizYear").textContent = "Year " + (year+1);
+    $("scrub").value = year+1;
+    const joined = t.coop.reduce((a,b)=>a+b,0), left = (t.vc||[]).reduce((a,b)=>a+b,0), ex = (t.exits||[]).length;
+    $("chips").innerHTML = [
+      [money(t.pool), "Fund at year end"],
+      [t.active + " of 18", "Campuses in"],
+      [pct(t.part*100,2), "Alumni participating"],
+      [t.support.toFixed(2) + " vs " + params.vcBoost.toFixed(2), "Network vs VC hubs"],
+      [joined + " / " + left, "Founders backed / left"],
+      [ex ? ex + " (" + money(t.inflow) + ")" : "None", "Exits this year"]
+    ].map(([b,s])=>`<div class="chip"><b>${b}</b><span>${s}</span></div>`).join("");
+    $("play").textContent = playing ? "Pause" : (year>=Yn-1 && phase>=1 ? "Replay" : "Play");
+  }
+
+  $("play").addEventListener("click", ()=>{ playing ? pause() : play(); });
+  $("scrub").addEventListener("input", e=>{ const v = parseInt(e.target.value,10)-1; playing = false; goTo(v); });
+  $("speed").addEventListener("change", e=>{ speed = parseFloat(e.target.value); });
+  document.querySelectorAll("[data-pick]").forEach(b=>b.addEventListener("click", ()=>{
+    if(!last) return;
+    pick = b.dataset.pick; pause(); load(last);
+    if(!reduce) play();
+  }));
+  window.addEventListener("resize", resize);
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  if(mq.addEventListener) mq.addEventListener("change", ()=>{ readColors(); draw(); });
+  readColors(); resize();
+  return {load: o=>{
+    pause(); load(o);
+    if(firstLoad && !reduce) play();
+    firstLoad = false;
+  }};
+})();
+
+applyValues({});
+markPreset("base");
+runAll();
+})();
+</script>
+</body>
+</html>
